@@ -1,524 +1,756 @@
-# Guide des reglages FFBClipX
+# Manuel complet FFBClipX
 
-Ce document explique le fonctionnement de l'application et la signification de tous les reglages exposes dans l'interface et dans `Config/FFBClip.ini`.
+Ce guide decrit l'ensemble de l'interface FFBClipX en francais:
+- les boutons
+- les cases a cocher
+- les valeurs reglables
+- les informations affichees
+- les fichiers de sauvegarde
 
-## 1. A quoi sert FFBClipX
+Le guide anglais equivalent est disponible dans `GUIDE_SETTINGS_EN.md`.
 
-FFBClipX essaie de reduire le clipping du retour de force dans Assetto Corsa en ajustant automatiquement le gain FFB de la voiture.
+## 1. Role de FFBClipX
 
-En pratique, il observe le signal FFB, estime le niveau utile, puis corrige le gain voiture pour:
+FFBClipX aide a limiter le clipping du retour de force dans Assetto Corsa.
 
-- eviter que le signal sature trop souvent
-- conserver autant de detail que possible
-- adapter le gain selon la voiture, le circuit et la session
+L'application surveille le signal FFB, estime une cible utile, puis ajuste le gain voiture pour:
+- garder le plus de detail possible
+- eviter les saturations trop frequentes
+- adapter le comportement selon la voiture, le circuit et la session
 
-## 2. Le point le plus important pour ton cas
+## 2. Organisation de l'interface
 
-Dans ta configuration actuelle:
+L'application est divisee en 2 niveaux:
+- le HUD principal
+- la fenetre `Options`, elle-meme divisee en 4 onglets:
+- `Drive`
+- `Adaptive`
+- `Protection`
+- `Tools`
 
-- `ddtoggle = 1` -> mode Direct Drive actif
-- `maxtorque = 18.0` -> ton couple max materiel est regle a 18 Nm
-- `dynamicmode = 0` -> le mode dynamique est desactive
-- `adaptivemode = 1` -> mode `Lock` actif
+## 3. Elements du HUD principal
 
-Tres important:
+### `FFBClipX`
 
-- en mode `Direct Drive`, si la cible de couple depasse le `max torque` materiel, l'application autorise volontairement du clipping
-- si tu affiches `19 Nm` alors que `max torque = 18 Nm`, tu demandes deja plus que ce que la base doit fournir proprement
+Titre de l'application.
 
-Donc, avant de chercher une autre option:
+### Ligne voiture / circuit
 
-1. garde `Mode Auto`
-2. garde `Manual override` desactive
-3. mets la cible de couple a `18 Nm` ou moins
-4. active `Dynamic mode` si tu veux mieux attraper les pics transitoires
-
-## 3. Les trois valeurs a bien distinguer
-
-Il y a trois notions importantes dans l'app:
-
-- `TargetGain`:
-  Valeur par defaut de depart. C'est ta base generale.
-- `CarGainTarget`:
-  Cible effective pour la voiture courante.
-- `CarGain`:
-  Gain actuellement applique a la voiture dans Assetto Corsa.
-
-Dans la ligne d'etat `Gain T/S/A`:
-
-- `T` = target calcule
-- `S` = target lisse
-- `A` = gain reel applique
-
-## 4. Regles simples pour ne plus clipper
-
-Si ton objectif est "le moins de clipping possible", pars sur ces regles:
-
-1. `Manual override` doit rester desactive.
-2. En DD, la cible de couple ne doit pas depasser `max torque`.
-3. `Dynamic mode` peut etre active si tu as encore des pics courts.
-4. `Adaptive mode = Lock` ou `Hybrid` est preferable a `Classic` pour stabiliser le comportement.
-5. `Safety limits`, `Outlier filter`, `Confidence gate` et `Rollback` doivent rester actifs.
-6. Si ca clippe encore, baisse la cible avant d'ajouter des artifices.
-
-## 5. Explication de chaque reglage
-
-## Onglet Drive
-
-### Mode Auto / Manual override
-
-- `Mode Auto`:
-  L'application ajuste le gain automatiquement.
-- `Manual override`:
-  L'application n'essaie plus d'empecher le clipping. A eviter si tu veux la protection maximale.
-
-### Direct Drive mode
-
-A activer si tu regles la force en Nm et non en pourcentage.
-
-- OFF:
-  La cible FFB est geree en pourcentage.
-- ON:
-  La cible est geree en Nm.
-
-En DD, `max torque` est la reference materielle du volant.
-
-### Run in background
-
-- OFF:
-  L'app travaille surtout quand sa fenetre est rendue.
-- ON:
-  L'app continue a tourner meme si la fenetre n'est pas au premier plan.
-
-### CSV logging
-
-Ecrit un journal runtime dans:
-
-- `Config/ffbclip_runtime_log.csv`
-
-Pratique pour analyser le comportement, inutile pour la simple conduite.
-
-### Default FFB strength (%) / Default torque target (Nm)
-
-C'est la valeur de base de depart de l'application.
-
-- si tu changes souvent de voiture, cette valeur sert de point de depart
-- ce n'est pas forcement la valeur finale appliquee en piste
-
-### Hardware max torque
-
-Disponible en mode DD.
-
-Doit representer le couple reel max de ton volant.
+Affiche la voiture et le circuit charges.
 
 Exemple:
+- `gp_2026_amr26 | rt_suzuka / layout_f1_2026`
 
-- base 18 Nm -> regle `18`
-- base 20 Nm -> regle `20`
+### `Mode badge`
 
-Si cette valeur est fausse, toute la logique DD devient fausse.
+Affiche un resume de l'etat courant:
+- `AUTO` ou `MANUAL`
+- mode adaptatif actif
+- `DYN` si le mode dynamique est actif
 
-### Display mode
+### `Torque target (Nm)` ou `FFB Strength`
 
-- `Off`:
-  pas d'affichage special
-- `Graph`:
-  graphe temps reel
-- `Histogram`:
-  repartition du signal
+Controle principal du HUD.
 
-### Graph refresh (Hz)
+Selon le mode:
+- en `Direct Drive mode = ON`, la valeur est en `Nm`
+- en `Direct Drive mode = OFF`, la valeur est en `%`
 
-Frequence de rafraichissement du graphe.
+Cette valeur represente la cible active pour la voiture courante.
 
-- plus haut = plus fluide
-- plus bas = plus leger
+Plage:
+- DD: `3` a `50 Nm`
+- non DD: `10` a `120 %`
 
-### Dynamic mode
+### Ligne message
 
-Mode plus agressif contre les pics soudains.
+Affiche le message d'etat principal:
+- mode auto actif
+- clipping protege ou non
+- reset
+- rollback
+- apprentissage
 
-- OFF:
-  comportement plus stable et plus doux
-- ON:
-  reaction plus rapide aux pointes de clipping
+### Ligne detail
 
-Si tu as encore du clipping en entree de vibreurs, compressions ou grosses charges, c'est la premiere option a essayer.
+Affiche un resume rapide:
+- profil `Race` ou `Qualif`
+- mode de courbe
+- mode d'affichage
 
-### Dynamic threshold (%)
+### Ligne `Combo / Default / Safety`
 
-Limite haute du mode dynamique.
+Resume de 3 valeurs:
+- `Combo`: point de depart memorise pour la combinaison voiture/circuit
+- `Default`: cible par defaut
+- `Safety`: plage mini / maxi autorisee par les limites de securite
 
-- plus bas = protection plus forte
-- plus haut = plus de liberte, mais plus de risque de saturation
+### Ligne `Wet / Kerb / Diag / Cal`
 
-### Dynamic intensity
+Resume des fonctions avancees:
+- etat du mode pluie
+- etat du filtre vibreurs
+- etat du dashboard diagnostic
+- etat du helper de calibration
 
-Vitesse de reaction du mode dynamique.
+### Graphe
 
-- plus faible = plus doux
-- plus fort = plus reactif
+Affiche le signal selon le mode d'affichage:
+- `Off`: pas de graphe utile
+- `Graph`: courbe en temps reel
+- `Histogram`: repartition statistique du signal
 
-Si tu montes trop haut, le gain peut devenir nerveux.
+Dans le graphe temps reel:
+- ligne rouge: cible
+- ligne verte: force observee
 
-### Preset snapshot
+### Bouton `Mode: Auto`
 
-Sauvegarde un instantane des reglages de base dans `FFBClip.ini`.
+Bascule entre:
+- `Auto`: FFBClip ajuste le gain automatiquement
+- `Manual`: FFBClip n'essaie plus d'empecher le clipping
 
-### Session report
+Recommandation:
+- laisser `Auto` dans la plupart des cas
 
-Genere un petit rapport de session dans:
+### Bouton `Dynamic: ON/OFF`
 
-- `Config/ffbclip_session_report.txt`
+Active ou desactive la reaction rapide aux pics brefs de clipping.
 
-## Onglet Adaptive
+Quand l'activer:
+- clipping sur vibreurs
+- compressions
+- gros appuis soudains
 
-### Adaptive mode
+### Bouton `Reset`
 
-- `Classic`:
-  adaptation continue classique
-- `Lock`:
-  apprend pendant quelques tours puis verrouille une base
-- `Hybrid`:
-  apprend une base puis laisse une variation controlee autour
+Remet la cible actuelle sur la valeur par defaut.
 
-Pour la plupart des cas:
+Effet:
+- reset de l'histogramme
+- retour a la cible de base
 
-- `Lock` = stable
-- `Hybrid` = stable mais un peu plus vivant
+### Bouton `Options`
 
-### Learn laps
+Ouvre ou ferme la fenetre de configuration avancee.
 
-Nombre de tours utilises pour apprendre la base.
+## 4. Onglet `Drive`
 
-- trop bas = apprentissage trop rapide et parfois faux
-- trop haut = lent a converger
+### `Manual override`
 
-Bon point de depart:
+Case a cocher.
 
-- `3` a `5` tours
+Effet:
+- active le mode manuel
+- desactive la protection automatique contre le clipping
 
-### Lock percentile
+### `Direct Drive mode`
 
-Percentile utilise pour calculer la base en mode `Lock`.
+Case a cocher.
 
-- plus bas = plus prudent, moins de clipping, moins de force
-- plus haut = plus de force, plus de risque de saturation
+Effet:
+- `OFF`: l'application travaille en pourcentage
+- `ON`: l'application travaille en `Nm`
 
-Valeur souvent saine:
+Utiliser `ON` si ton volant est regle autour d'un couple reel connu.
 
-- `20` a `25`
+### `Run in background`
 
-### Hybrid band (%)
+Case a cocher.
 
-Amplitude autorisee autour de la base verrouillee en mode `Hybrid`.
+Effet:
+- l'app continue a tourner meme si sa fenetre n'est pas active
 
-- plus bas = plus stable
-- plus haut = plus libre
+### `CSV logging`
 
-### Profile mode
+Case a cocher.
 
+Effet:
+- enregistre des donnees runtime dans `Config/ffbclip_runtime_log.csv`
+
+Utile pour:
+- debug
+- analyse de session
+
+### `Default FFB strength (%)` ou `Default torque target (Nm)`
+
+Spinner.
+
+Plage:
+- DD: `3` a `50`
+- non DD: `10` a `120`
+
+Role:
+- definit la cible de depart generale
+- sert de base avant les adaptations contextuelles
+
+### `Hardware max torque`
+
+Spinner disponible en mode DD.
+
+Plage:
+- `3` a `50 Nm`
+
+Role:
+- represente le couple max reel du materiel
+
+Important:
+- si cette valeur est fausse, toutes les conversions DD deviennent fausses
+
+### `Display mode`
+
+Bouton cyclique.
+
+Ordre:
+- `Off`
+- `Graph`
+- `Histogram`
+
+### `Graph refresh (Hz)`
+
+Spinner.
+
+Plage:
+- `1` a `30`
+
+Role:
+- frequence de rafraichissement du graphe
+
+### `Dynamic threshold (%)`
+
+Spinner.
+
+Plage:
+- `10` a `300`
+
+Role:
+- seuil du mode dynamique
+
+Interpretation:
+- plus bas = reaction plus protectrice
+- plus haut = reaction plus permissive
+
+### `Dynamic intensity`
+
+Spinner.
+
+Plage:
+- `50` a `500`
+
+Role:
+- vitesse de reaction du mode dynamique
+
+Interpretation:
+- plus bas = plus doux
+- plus haut = plus agressif
+
+### `Preset snapshot`
+
+Case a cocher.
+
+Effet:
+- autorise la sauvegarde d'un instantane de reglages dans `FFBClip.ini`
+
+### `Session report`
+
+Case a cocher.
+
+Effet:
+- genere un rapport texte de session dans `Config/ffbclip_session_report.txt`
+
+## 5. Onglet `Adaptive`
+
+### `Adaptive mode`
+
+Bouton cyclique.
+
+Ordre:
+- `Classic`
+- `Lock`
+- `Hybrid`
+
+Role:
+- `Classic`: adaptation continue
+- `Lock`: apprend une base puis la verrouille
+- `Hybrid`: apprend une base puis autorise une variation limitee autour
+
+Note:
+- changer ce mode reinitialise l'apprentissage
+
+### `Profile mode`
+
+Bouton cyclique.
+
+Valeurs:
 - `Race`
 - `Qualif`
 
-Le mode `Qualif` peut etre un peu plus agressif.
+Role:
+- permet une legere variation de comportement selon le contexte
 
-### Auto session profile
+Note:
+- cliquer dessus desactive `Auto session profile`
 
-Permet a l'app de changer de profil selon la session si possible.
+### `Learn laps`
 
-### Phase learning
+Spinner.
 
-Apprentissage par plages de vitesse:
+Plage:
+- `1` a `20`
 
-- lent
-- moyen
-- rapide
+Role:
+- nombre de tours utilises pour apprendre
 
-Cela aide a construire un `Lock` plus intelligent.
+### `Lock percentile`
 
-### Show confidence
+Spinner.
 
-Affiche la confiance de l'apprentissage.
+Plage:
+- `1` a `50`
 
-### Confidence gate
+Role:
+- percentile utilise pour calculer la base en mode `Lock`
 
-Empêche d'appliquer un verrouillage trop tot tant que l'apprentissage n'est pas assez fiable.
+Interpretation:
+- plus bas = plus prudent
+- plus haut = plus fort mais plus risqe de clipping
 
-### Confidence gate (%)
+### `Hybrid band (%)`
 
-Seuil de confiance minimal avant d'autoriser le `Lock`/`Hybrid`.
+Spinner.
 
-- plus haut = plus prudent
-- plus bas = plus rapide
+Plage:
+- `5` a `50`
 
-### Setup-aware learn
+Role:
+- amplitude autorisee autour de la base verrouillee en mode `Hybrid`
 
-Remet l'apprentissage a zero si des parametres structurants changent.
+### `Confidence gate (%)`
 
-### Auto reset combo
+Spinner.
 
-Reinitialise l'apprentissage quand le couple voiture/circuit change.
+Plage:
+- `50` a `98`
 
-### Profile shaping
+Role:
+- confiance minimale necessaire avant d'autoriser le verrouillage
 
-Petite correction selon le profil `Race` ou `Qualif`.
+### `Phase learning`
 
-### Rollback gate
+Case a cocher.
 
-Si la confiance n'est pas suffisante, l'app peut revenir a une valeur de secours plus sure.
+Role:
+- segmente l'apprentissage par zones de vitesse / charge
 
-## Onglet Protection
+Note:
+- changer cet etat reinitialise l'apprentissage
 
-### Outlier filter
+### `Show confidence`
 
-Filtre les valeurs aberrantes.
+Case a cocher.
 
-Utile pour eviter qu'un pic unique fausse tout.
+Role:
+- affiche la confiance d'apprentissage dans l'interface
 
-### Anti oscillation
+### `Confidence gate`
 
-Evite les micro-corrections trop frequentes.
+Case a cocher.
 
-### Safety limits
+Role:
+- active ou desactive le verrou base sur le seuil de confiance
 
-Active des bornes minimales et maximales de gain.
+### `Setup-aware learn`
 
-### Safety floor (%)
+Case a cocher.
 
-Gain minimum autorise.
+Role:
+- reinitialise l'apprentissage si un changement important de setup est detecte
 
-- trop haut = la protection peut devenir moins efficace
-- trop bas = la force peut devenir trop faible
+### `Auto reset combo`
 
-### Safety ceiling (%)
+Case a cocher.
 
-Gain maximum autorise.
+Role:
+- reinitialise l'apprentissage lors d'un changement voiture/circuit
 
-- plus bas = plus de securite anti-clipping
-- plus haut = plus de force possible
+### `Auto session profile`
 
-### Deadband (%)
+Case a cocher.
 
-Ignore les corrections trop petites.
+Role:
+- choisit automatiquement `Race` ou `Qualif` selon la session si possible
 
-### Min interval (ms)
+### `Profile shaping`
 
-Temps minimal entre deux corrections.
+Case a cocher.
 
-### Endurance ceiling
+Role:
+- applique une legere correction selon le profil courant
 
-Adoucit progressivement le plafond de force sur les longues sessions.
+### `Rollback gate`
 
-### Endurance start (min)
+Case a cocher.
 
-Moment a partir duquel la reduction d'endurance commence.
+Role:
+- autorise l'utilisation d'une valeur de secours si la confiance n'est pas suffisante
 
-### Max endurance drop (%)
+## 6. Onglet `Protection`
 
-Reduction maximale autorisee.
+### `Outlier filter`
 
-### Wet softening
+Case a cocher.
 
-Adoucit le FFB si le grip chute fortement.
+Role:
+- filtre les pointes aberrantes pour eviter qu'un pic unique fausse la logique
 
-Ce n'est pas une vraie protection de clipping, plutot une adaptation aux conditions.
+### `Anti oscillation`
 
-### Wet grip threshold (%)
+Case a cocher.
 
-Seuil de grip sous lequel l'adoucissement commence.
+Role:
+- evite les micro-corrections trop frequentes
 
-### Wet softening (%)
+### `Safety limits`
 
-Intensite de l'adoucissement.
+Case a cocher.
 
-### Kerb filter
+Role:
+- active un plancher et un plafond de gain
 
-Freine certains pics tres brusques, souvent sur vibreurs ou gros chocs.
+### `Endurance ceiling`
 
-Peut aider si ton clipping vient surtout de gros spikes.
+Case a cocher.
 
-### Kerb spike threshold (%)
+Role:
+- reduit progressivement le plafond de force sur les longues sessions
 
-Sensibilite de detection des pics.
+### `Safety floor (%)`
 
-### Kerb damp factor (%)
+Spinner.
 
-Reduction appliquee quand un pic est detecte.
+Plage:
+- `20` a `150`
 
-## Onglet Tools
+Role:
+- gain minimum autorise
 
-### Response curves
+### `Safety ceiling (%)`
 
-Change la courbe de ressenti, pas la protection anti-clipping principale.
+Spinner.
 
-### Response curve
+Plage:
+- `80` a `300`
 
+Role:
+- gain maximum autorise
+
+### `Deadband (%)`
+
+Spinner.
+
+Plage:
+- `0` a `20`
+
+Role:
+- ignore les corrections trop petites
+
+### `Min interval (ms)`
+
+Spinner.
+
+Plage:
+- `50` a `1000`
+
+Role:
+- intervalle minimal entre deux corrections
+
+### `Endurance start (min)`
+
+Spinner.
+
+Plage:
+- `10` a `240`
+
+Role:
+- moment ou la reduction d'endurance commence
+
+### `Max endurance drop (%)`
+
+Spinner.
+
+Plage:
+- `0` a `30`
+
+Role:
+- reduction maximale autorisee en endurance
+
+### `Wet softening`
+
+Case a cocher.
+
+Role:
+- adoucit le comportement si le grip chute
+
+### `Kerb filter`
+
+Case a cocher.
+
+Role:
+- atténue certains pics sur vibreurs / chocs
+
+### `Wet grip threshold (%)`
+
+Spinner.
+
+Plage:
+- `60` a `100`
+
+Role:
+- seuil de grip sous lequel le mode pluie commence a agir
+
+### `Wet softening (%)`
+
+Spinner.
+
+Plage:
+- `0` a `30`
+
+Role:
+- intensite de l'adoucissement pluie
+
+### `Kerb spike threshold (%)`
+
+Spinner.
+
+Plage:
+- `5` a `80`
+
+Role:
+- sensibilite de detection des pics
+
+### `Kerb damp factor (%)`
+
+Spinner.
+
+Plage:
+- `35` a `100`
+
+Role:
+- reduction appliquee apres detection d'un pic
+
+## 7. Onglet `Tools`
+
+### `Response curves`
+
+Case a cocher.
+
+Role:
+- active un remodelage de la courbe de ressenti
+
+### `Anti fatigue`
+
+Case a cocher.
+
+Role:
+- adoucit une plage d'effort pour reduire la fatigue
+
+### `Response curve`
+
+Bouton cyclique.
+
+Ordre:
 - `Linear`
 - `Expo`
 - `S-curve`
 
-### Curve strength (%)
+### `Curve strength (%)`
 
-Force de la courbe choisie.
+Spinner.
 
-### Anti fatigue
+Plage:
+- `0` a `100`
 
-Adoucit une certaine plage de forces pour moins fatiguer sur la duree.
+Role:
+- intensite de la courbe choisie
 
-Ce n'est pas un vrai outil anti-clipping.
+### `Fatigue low band (%)`
 
-### Fatigue low band (%)
+Spinner.
 
-Debut de la plage concernee.
+Plage:
+- `20` a `90`
 
-### Fatigue high band (%)
+Role:
+- debut de la zone concernee par l'anti-fatigue
 
-Fin de la plage concernee.
+### `Fatigue high band (%)`
 
-### Fatigue reduction (%)
+Spinner.
 
-Reduction appliquee dans cette plage.
+Plage:
+- `30` a `100`
 
-### Diag dashboard
+Role:
+- fin de la zone concernee par l'anti-fatigue
 
-Ajoute plus d'informations de diagnostic dans la ligne d'etat.
+### `Fatigue reduction (%)`
 
-### Diag refresh
+Spinner.
 
-Frequence de mise a jour de ces diagnostics.
+Plage:
+- `0` a `35`
 
-### Calibration helper
+Role:
+- reduction appliquee dans la zone anti-fatigue
 
-Active l'assistant de calibration.
+### `Diag dashboard`
 
-### Start calib / Stop calib
+Case a cocher.
 
-Demarre ou stoppe la sequence de calibration.
+Role:
+- active l'affichage de diagnostics supplementaires
 
-### Calib warmup laps
+### `Diag refresh (s x100)`
 
-Tours d'echauffement avant apprentissage.
+Spinner.
 
-### Calib learn laps
+Plage:
+- `25` a `500`
 
-Tours utilises pour apprendre.
+Role:
+- cadence du diagnostic
 
-### Calib validation laps
+Interpretation:
+- `100` = `1.00 s`
 
-Tours utilises pour verifier la coherence du resultat.
+### `Calibration helper`
 
-### Reset learn
+Case a cocher.
 
-Efface les donnees d'apprentissage.
+Role:
+- active l'assistant de calibration
 
-### Rollback
+### `Calib warmup laps`
 
-Applique manuellement une valeur de secours si elle existe.
+Spinner.
 
-## 6. Fichiers de configuration
+Plage:
+- `0` a `5`
+
+Role:
+- tours d'echauffement avant apprentissage
+
+### `Calib learn laps`
+
+Spinner.
+
+Plage:
+- `1` a `10`
+
+Role:
+- tours utilises pour apprendre la calibration
+
+### `Calib validation laps`
+
+Spinner.
+
+Plage:
+- `1` a `10`
+
+Role:
+- tours utilises pour verifier la calibration
+
+## 8. Boutons d'action en bas de la fenetre options
+
+### `Start calib` / `Stop calib`
+
+Demarre ou arrete la sequence de calibration.
+
+### `Reset learn`
+
+Efface les donnees d'apprentissage:
+- historique
+- lock
+- confiance
+
+### `Rollback`
+
+Applique une valeur de secours si elle existe.
+
+### `Close`
+
+Ferme la fenetre d'options.
+
+## 9. Fichiers de configuration
 
 ### `Config/FFBClip.ini`
 
-Reglages generaux et presets.
+Contient:
+- reglages generaux
+- cible par defaut
+- cibles DD sauvegardees
+- sections de presets
+
+Sections importantes:
+- `[Options]`
+- `[targetgains]`
+- `[targettorquesnm]`
+- `[Preset_*]`
 
 ### `Config/Combos.ini`
 
-Memorise un point de depart par combinaison circuit + voiture.
+Contient:
+- une valeur memorisee par combinaison voiture/circuit
+- les valeurs de lock apprises
 
-### Section `[targetgains]` dans `FFBClip.ini`
+### `Config/ffbclip_runtime_log.csv`
 
-Mémorise la cible de base par voiture.
+Cree si `CSV logging` est actif.
 
-## 7. Ce qui est active ou non chez toi
+### `Config/ffbclip_session_report.txt`
 
-### Actif actuellement
+Cree si `Session report` est actif.
 
-- `Mode Auto`
-- `Direct Drive mode`
-- `Adaptive mode = Lock`
-- `Outlier filter`
-- `Anti oscillation`
-- `Safety limits`
-- `Phase learning`
-- `Confidence gate`
-- `Rollback`
-- `Preset snapshot`
-- `Session report`
+## 10. Reglages conseilles pour commencer
 
-### Desactive actuellement
+### Base DD simple
 
-- `Dynamic mode`
-- `Endurance ceiling`
-- `CSV logging`
-- `Wet softening`
-- `Kerb filter`
-- `Response curves`
-- `Anti fatigue`
-- `Diag dashboard`
-- `Calibration helper`
-
-## 8. Ce qu'il faut activer si tu as encore du clipping
-
-Ordre de priorite conseille:
-
-1. baisse la cible de couple pour rester a `18 Nm` max si ton `max torque` vaut `18`
-2. active `Dynamic mode`
-3. si les gros pics viennent surtout des chocs et vibreurs, active `Kerb filter`
-4. garde `Safety limits`, `Outlier filter`, `Confidence gate` et `Rollback` actifs
-5. si le comportement reste trop flottant, essaie `Hybrid` au lieu de `Lock`
-
-## 9. Reglage simple recommande pour commencer
-
-Pour une base saine anti-clipping:
-
-- `Mode Auto`
-- `Manual override = OFF`
+- `Mode: Auto`
 - `Direct Drive mode = ON`
-- `Hardware max torque = 18`
-- `Torque target = 16 a 18 Nm`
-- `Dynamic mode = ON`
+- `Hardware max torque = couple reel du volant`
+- `Torque target = un peu sous la limite materielle`
 - `Adaptive mode = Lock`
-- `Learn laps = 3`
+- `Learn laps = 3 a 5`
 - `Lock percentile = 20 a 25`
-- `Confidence gate = ON`
 - `Safety limits = ON`
 - `Outlier filter = ON`
+- `Confidence gate = ON`
 
-## 10. Symptomes et causes
+### Si tu as encore du clipping
 
-### "Ca clippe encore dans les gros appuis"
+- baisse la cible principale
+- active `Dynamic`
+- teste `Kerb filter`
+- reduis `Safety ceiling`
 
-Causes probables:
+### Si le FFB devient trop mou
 
-- cible trop haute
-- `Dynamic mode` OFF
-- `Safety ceiling` trop haute
+- remonte legerement la cible
+- augmente `Lock percentile`
+- remonte `Safety ceiling`
 
-### "Ca clippe surtout sur les vibreurs"
+## 11. Resume ultra-court
 
-Causes probables:
+Les reglages les plus importants sont:
+- `Torque target (Nm)` ou `FFB Strength`
+- `Default torque target (Nm)` ou `Default FFB strength (%)`
+- `Hardware max torque`
+- `Dynamic`
+- `Adaptive mode`
+- `Safety limits`
 
-- gros spikes transitoires
-
-Essayer:
-
-- `Dynamic mode = ON`
-- `Kerb filter = ON`
-
-### "Le FFB est trop faible"
-
-Causes probables:
-
-- cible trop basse
-- `Lock percentile` trop prudent
-- `Safety ceiling` trop restrictive
-
-## 11. Resume tres court
-
-Si tu ne devais retenir que 4 choses:
-
-1. en DD, ne depasse pas le `max torque` si tu veux eviter le clipping
-2. laisse `Mode Auto` actif
-3. active `Dynamic mode` si tu as encore des pics
-4. `Lock` ou `Hybrid` sont les meilleurs modes de depart
+Si tu veux un comportement sain:
+- reste en `Auto`
+- regle correctement le `Hardware max torque`
+- garde une cible principale realiste
+- active les protections avant d'augmenter la force

@@ -189,6 +189,14 @@ def _dd_nm_to_ratio(nm_value):
 	return _clamp((float(nm_value) / max(float(MaxTorque), 0.1)) * _dd_nominal_ratio(), 0.0, 3.0)
 
 
+def _dd_default_target_nm():
+	return _clamp(_dd_ratio_to_nm(TargetGain), 3, 50)
+
+
+def _dd_car_target_nm():
+	return _clamp(_dd_ratio_to_nm(CarGainTarget), 3, 50)
+
+
 def _needs_dd_mapping_migration():
 	return DDToggle == 1 and int(DDMappingVersion) < 2
 
@@ -820,6 +828,35 @@ def _sync_gain_controls():
 	_set_spinner_value_safely(DefaultGainSpinner, _default_spinner_value())
 
 
+def _pull_gain_inputs_from_ui():
+	global GainControlSyncLock
+	if GainControlSyncLock == 1:
+		return
+	try:
+		ui_target = float(ac.getValue(targetGainSpinner))
+		ui_default = float(ac.getValue(DefaultGainSpinner))
+		ui_torque = float(ac.getValue(TorqueSpinner))
+	except Exception:
+		return
+	if DDToggle == 1:
+		if abs(ui_torque - MaxTorque) > 0.01:
+			TorqueChange(ui_torque)
+			return
+		if abs(ui_default - _default_spinner_value()) > 0.01:
+			DefaultGainChange(ui_default)
+			return
+		if abs(ui_target - _target_spinner_value()) > 0.01:
+			targetChange(ui_target)
+			return
+	else:
+		if abs(ui_default - _default_spinner_value()) > 0.01:
+			DefaultGainChange(ui_default)
+			return
+		if abs(ui_target - _target_spinner_value()) > 0.01:
+			targetChange(ui_target)
+			return
+
+
 def _reset_learning_state(status_message=None, clear_persisted=False):
 	global LearningLapStart, LearningComplete, LearningSamples, LearningSamplesSlow, LearningSamplesMid, LearningSamplesFast, LearningSafeCaps, LockValue
 	LearningLapStart = -1
@@ -1138,6 +1175,11 @@ def acMain(acVersion):
 	CarGainTarget=float(ReadOptions(FFBClip,FFBClipPath,"targetgains",CarID,str(TargetGain)))
 	TargetGain = _migrate_dd_legacy_ratio(TargetGain)
 	CarGainTarget = _migrate_dd_legacy_ratio(CarGainTarget)
+	if DDToggle == 1 and CarID != "":
+		ddDefaultTargetNm = float(ReadOptions(FFBClip,FFBClipPath,"Options","defaulttorquetargetnm",str(_dd_default_target_nm())))
+		ddCarTargetNm = float(ReadOptions(FFBClip,FFBClipPath,"targettorquesnm",CarID,str(ddDefaultTargetNm)))
+		TargetGain = _dd_nm_to_ratio(ddDefaultTargetNm)
+		CarGainTarget = _dd_nm_to_ratio(ddCarTargetNm)
 	if AdaptiveMode != 0 and LearningComplete == 1:
 		LockValue = _clamp(_migrate_dd_legacy_ratio(LockValue), 0.20, 3.0)
 		RollbackGain = LockValue
@@ -2036,13 +2078,17 @@ def _persist_gain_settings():
 	if CarID != "":
 		stored_target = CarGainTarget + Cutoff if Cutoff > 0.01 and DDToggle == 0 else CarGainTarget
 		WriteOptions(FFBClip, FFBClipPath, "targetgains", CarID, str(stored_target))
+	if DDToggle == 1 and CarID != "":
+		WriteOptions(FFBClip, FFBClipPath, "targettorquesnm", CarID, str(_dd_car_target_nm()))
 	WriteOptions(FFBClip, FFBClipPath, "Options", "maxtorque", str(MaxTorque))
 	WriteOptions(FFBClip, FFBClipPath, "Options", "targetgain", str(TargetGain))
+	if DDToggle == 1:
+		WriteOptions(FFBClip, FFBClipPath, "Options", "defaulttorquetargetnm", str(_dd_default_target_nm()))
 	WriteOptions(FFBClip, FFBClipPath, "Options", "ddtoggle", str(DDToggle))
 	WriteOptions(FFBClip, FFBClipPath, "Options", "ddmappingversion", str(DDMappingVersion))
 	
 def targetChange(value):
-	global errorMessage,messageLabel,CarGainTarget,Cutoff,targetGainSpinner,MaxTorque,DDToggle,AutoMode,TargetGain,DefaultGainSpinner,GainControlSyncLock
+	global errorMessage,messageLabel,CarGainTarget,Cutoff,targetGainSpinner,MaxTorque,DDToggle,AutoMode,GainControlSyncLock
 
 	if GainControlSyncLock == 1:
 		return
@@ -2050,10 +2096,8 @@ def targetChange(value):
 	ac.console("TargetChange:" + str(value))
 	if DDToggle==1:
 		CarGainTarget = _dd_nm_to_ratio(value)
-		TargetGain = CarGainTarget
 		Cutoff=0.05
 		msg = "Average cornering torque {}Nm".format(round(value)) if AutoMode == 1 else "Manual override, clipping is NOT prevented"
-		_set_spinner_value_safely(DefaultGainSpinner, _default_spinner_value())
 		_set_message_if_changed(msg)
 		_refresh_ui_text()
 		_persist_gain_settings()
@@ -2170,7 +2214,7 @@ def TorqueChange(value):
 	
 def DefaultGainChange(value):
 	
-	global MaxTorque,DDToggle,TargetGain,DefaultGainSpinner,CarGainTarget,targetGainSpinner,GainControlSyncLock
+	global MaxTorque,DDToggle,TargetGain,DefaultGainSpinner,GainControlSyncLock
 
 	if GainControlSyncLock == 1:
 		return
@@ -2179,9 +2223,7 @@ def DefaultGainChange(value):
 	
 	if DDToggle==1:
 		TargetGain=_dd_nm_to_ratio(value)
-		CarGainTarget = TargetGain
 		ac.setRange(DefaultGainSpinner,3,50)
-		_set_spinner_value_safely(targetGainSpinner, _target_spinner_value())
 	else:
 		TargetGain = value/100
 		ac.setRange(DefaultGainSpinner,10,120)
@@ -2527,6 +2569,7 @@ def RunAll(deltaT):
 	
 ## Runs every frame
 	RunClock += deltaT
+	_pull_gain_inputs_from_ui()
 	
 		
 	# CurrentForce = abs(ac.getCarState(0,acsys.CS.LastFF))
