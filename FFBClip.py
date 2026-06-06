@@ -2016,6 +2016,20 @@ def WriteOptions(File, FilePath, Section, Option, Value):
 	#ac.log("Close config file")
 	
 	return ""
+
+
+def _persist_gain_settings():
+	global FFBClip, FFBClipPath, CarID, CarGainTarget, Cutoff, MaxTorque, TargetGain, DDToggle, DDMappingVersion
+
+	if not FFBClipPath:
+		return
+	if CarID != "":
+		stored_target = CarGainTarget + Cutoff if Cutoff > 0.01 and DDToggle == 0 else CarGainTarget
+		WriteOptions(FFBClip, FFBClipPath, "targetgains", CarID, str(stored_target))
+	WriteOptions(FFBClip, FFBClipPath, "Options", "maxtorque", str(MaxTorque))
+	WriteOptions(FFBClip, FFBClipPath, "Options", "targetgain", str(TargetGain))
+	WriteOptions(FFBClip, FFBClipPath, "Options", "ddtoggle", str(DDToggle))
+	WriteOptions(FFBClip, FFBClipPath, "Options", "ddmappingversion", str(DDMappingVersion))
 	
 def targetChange(value):
 	global errorMessage,messageLabel,CarGainTarget,Cutoff,targetGainSpinner,MaxTorque,DDToggle,AutoMode
@@ -2027,6 +2041,7 @@ def targetChange(value):
 		msg = "Average cornering torque {}Nm".format(round(value)) if AutoMode == 1 else "Manual override, clipping is NOT prevented"
 		_set_message_if_changed(msg)
 		_refresh_ui_text()
+		_persist_gain_settings()
 		ac.console("Cargaintarget: " + str(CarGainTarget) + " - Cutoff: " + str(Cutoff))
 		return
 		
@@ -2041,6 +2056,7 @@ def targetChange(value):
 			
 	_set_message_if_changed(msg)
 	_refresh_ui_text()
+	_persist_gain_settings()
 		
 	ac.console("Cargaintarget: " + str(CarGainTarget) + " - Cutoff: " + str(Cutoff))
 	
@@ -2114,6 +2130,7 @@ def DDToggleButtonChange(val1, val2):
 	DDToggle = 1 if val2 else 0
 	_sync_gain_controls()
 	targetChange(_target_spinner_value())
+	_persist_gain_settings()
 	ac.console("DDmode engaged" if DDToggle == 1 else "DDmode disengaged")
 	ac.console("DDmode button finished")
 	_refresh_ui_text()
@@ -2133,6 +2150,7 @@ def TorqueChange(value):
 	_sync_gain_controls()
 	targetChange(_target_spinner_value())
 	DefaultGainChange(_default_spinner_value())
+	_persist_gain_settings()
 	
 	
 def DefaultGainChange(value):
@@ -2148,6 +2166,7 @@ def DefaultGainChange(value):
 		TargetGain = value/100
 		ac.setRange(DefaultGainSpinner,10,120)
 	_refresh_ui_text()
+	_persist_gain_settings()
 		
 def GraphRefreshChange(value):
 
