@@ -130,6 +130,12 @@ Effet:
 - reset de l'histogramme
 - retour a la cible de base
 
+Important:
+- n'efface pas l'apprentissage
+- ne supprime pas la valeur `Lock`
+- ne supprime pas les donnees sauvegardees du combo courant
+- sert seulement a revenir rapidement a la cible par defaut pendant la session
+
 ### Bouton `Options`
 
 Ouvre ou ferme la fenetre de configuration avancee.
@@ -672,6 +678,15 @@ Efface les donnees d'apprentissage:
 - historique
 - lock
 - confiance
+
+Portee:
+- seulement pour la voiture actuelle
+- seulement pour le circuit actuel
+- supprime la donnee de `lock` sauvegardee pour ce combo
+
+Difference avec `Reset`:
+- `Reset` remet la cible active a la valeur par defaut sans effacer l'apprentissage
+- `Reset learn` efface l'apprentissage du combo courant
 
 ### `Rollback`
 
