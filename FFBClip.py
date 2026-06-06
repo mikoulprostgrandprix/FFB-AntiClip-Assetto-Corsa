@@ -138,6 +138,7 @@ OptionsAdaptiveWidgets=[]
 OptionsProtectionWidgets=[]
 OptionsToolsWidgets=[]
 OptionsActionWidgets=[]
+GainControlSyncLock=0
 
 
 #Variable initialization - AC
@@ -168,6 +169,15 @@ def _clamp(v, lo, hi):
 
 def _dd_nominal_ratio():
 	return _clamp(DDUsableTorqueRatio, 0.20, 1.00)
+
+
+def _set_spinner_value_safely(spinner, value):
+	global GainControlSyncLock
+	GainControlSyncLock = 1
+	try:
+		ac.setValue(spinner, value)
+	finally:
+		GainControlSyncLock = 0
 
 
 def _dd_ratio_to_nm(ratio):
@@ -806,8 +816,8 @@ def _sync_gain_controls():
 		ac.setRange(targetGainSpinner, 10, 120)
 		ac.setRange(DefaultGainSpinner, 10, 120)
 		ac.setVisible(TorqueSpinner, 0)
-	ac.setValue(targetGainSpinner, _target_spinner_value())
-	ac.setValue(DefaultGainSpinner, _default_spinner_value())
+	_set_spinner_value_safely(targetGainSpinner, _target_spinner_value())
+	_set_spinner_value_safely(DefaultGainSpinner, _default_spinner_value())
 
 
 def _reset_learning_state(status_message=None, clear_persisted=False):
@@ -2032,13 +2042,18 @@ def _persist_gain_settings():
 	WriteOptions(FFBClip, FFBClipPath, "Options", "ddmappingversion", str(DDMappingVersion))
 	
 def targetChange(value):
-	global errorMessage,messageLabel,CarGainTarget,Cutoff,targetGainSpinner,MaxTorque,DDToggle,AutoMode
+	global errorMessage,messageLabel,CarGainTarget,Cutoff,targetGainSpinner,MaxTorque,DDToggle,AutoMode,TargetGain,DefaultGainSpinner,GainControlSyncLock
+
+	if GainControlSyncLock == 1:
+		return
 	
 	ac.console("TargetChange:" + str(value))
 	if DDToggle==1:
 		CarGainTarget = _dd_nm_to_ratio(value)
+		TargetGain = CarGainTarget
 		Cutoff=0.05
 		msg = "Average cornering torque {}Nm".format(round(value)) if AutoMode == 1 else "Manual override, clipping is NOT prevented"
+		_set_spinner_value_safely(DefaultGainSpinner, _default_spinner_value())
 		_set_message_if_changed(msg)
 		_refresh_ui_text()
 		_persist_gain_settings()
@@ -2155,13 +2170,18 @@ def TorqueChange(value):
 	
 def DefaultGainChange(value):
 	
-	global MaxTorque,DDToggle,TargetGain,DefaultGainSpinner
+	global MaxTorque,DDToggle,TargetGain,DefaultGainSpinner,CarGainTarget,targetGainSpinner,GainControlSyncLock
+
+	if GainControlSyncLock == 1:
+		return
 	
 	ac.console("DefaultGainChange:" + str(value))
 	
 	if DDToggle==1:
 		TargetGain=_dd_nm_to_ratio(value)
+		CarGainTarget = TargetGain
 		ac.setRange(DefaultGainSpinner,3,50)
+		_set_spinner_value_safely(targetGainSpinner, _target_spinner_value())
 	else:
 		TargetGain = value/100
 		ac.setRange(DefaultGainSpinner,10,120)

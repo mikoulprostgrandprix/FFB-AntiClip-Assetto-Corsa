@@ -4,5 +4,5 @@ Laps: 0
 AdaptiveMode: 1
 LearningComplete: 0
 LockValue: 1.0000
-Confidence: 100.00%
-Runtime(min est): 11.6
+Confidence: 20.00%
+Runtime(min est): 0.1
