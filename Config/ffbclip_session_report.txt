@@ -1,8 +1,8 @@
 FFBClip Session Report
 Version: 6.4.0-ui1
-Laps: 0
+Laps: 4
 AdaptiveMode: 1
-LearningComplete: 0
-LockValue: 1.0000
-Confidence: 20.00%
-Runtime(min est): 0.2
+LearningComplete: 1
+LockValue: 0.2000
+Confidence: 100.00%
+Runtime(min est): 8.4

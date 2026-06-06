@@ -2664,17 +2664,8 @@ def RunAll(deltaT):
 		lockSafetyTriggered = False
 		# Advanced adaptive modes
 		if AdaptiveMode == 1 and LearningComplete == 1:
-			# LOCK: stay on learned value, but if a real clip still appears, lower and persist a safer lock.
+			# LOCK: stay strictly on the learned value until the user resets or changes mode.
 			ffbMultiplier = LockValue
-			if peakIsClipping and AutoMode == 1:
-				safe_lock = _clamp(_compute_peak_safe_gain(max(CarGain, LockValue), signalForce, clipLimit) * 0.99, 0.20, 3.0)
-				if safe_lock < LockValue:
-					LockValue = safe_lock
-					RollbackGain = LockValue
-					RollbackLockValue = LockValue
-					_persist_combo_lock(LockValue)
-				ffbMultiplier = LockValue
-				lockSafetyTriggered = True
 		elif AdaptiveMode == 2 and LearningComplete == 1:
 			# HYBRID: blend learned lock and live adaptation, but only force extra drop on real clipping.
 			if FeatureConfidenceGate==0 or _confidence_gate_passed():
