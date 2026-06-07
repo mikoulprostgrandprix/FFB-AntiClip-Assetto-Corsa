@@ -1,8 +1,10 @@
 FFBClip Session Report
 Version: 6.4.0-ui1
-Laps: 5
+Car: formula_ultra_26
+Track: rt_suzuka_layout_f1_2026
+Laps: 0
 AdaptiveMode: 1
 LearningComplete: 1
-LockValue: 0.4459
+LockValue: 0.2900
 Confidence: 100.00%
-Runtime(min est): 10.7
+Runtime(min est): 0.1

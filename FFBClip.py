@@ -48,6 +48,8 @@ LearningLapStart=-1
 LearningComplete=0
 LearningSamples=[]
 LearningSafeCaps=[]
+StoredLockLoaded=0
+LearningCompletedThisSession=0
 LockValue=1.0
 LastLapCount=-1
 
@@ -256,6 +258,7 @@ def _update_learning_state(current_gain_sample, safe_cap_sample=None):
 	global AdaptiveMode, LearningLapStart, LearningComplete, LearningSamples, LearningSafeCaps, LearnLaps
 	global LockPercentile, LockValue, LastLapCount, FeaturePhaseLearning
 	global RollbackGain, RollbackLockValue
+	global LearningCompletedThisSession
 	if AdaptiveMode == 0:
 		return False
 	try:
@@ -286,6 +289,7 @@ def _update_learning_state(current_gain_sample, safe_cap_sample=None):
 		LockValue = min(base_lock, safe_lock * 0.99)
 		LockValue = _clamp(LockValue, 0.20, 3.0)
 		LearningComplete = 1
+		LearningCompletedThisSession = 1
 		RollbackGain = _clamp(_percentile(recent_samples, max(35.0, LockPercentile)), 0.20, 2.50)
 		RollbackLockValue = LockValue
 		_persist_combo_lock(LockValue)
@@ -554,6 +558,8 @@ def _maybe_write_session_report():
 	lines=[]
 	lines.append('FFBClip Session Report')
 	lines.append('Version: '+Version)
+	lines.append('Car: {}'.format(CarID))
+	lines.append('Track: {}'.format(_combo_section_name()))
 	lines.append('Laps: {}'.format(laps))
 	lines.append('AdaptiveMode: {}'.format(AdaptiveMode))
 	lines.append('LearningComplete: {}'.format(LearningComplete))
@@ -666,7 +672,18 @@ def _combo_lock_option_name():
 
 def _persist_combo_lock(lock_ratio):
 	global Combo, ComboPath
+	global LearningCompletedThisSession
 	lock_ratio = _clamp(lock_ratio, 0.20, 3.0)
+	Combo.read(ComboPath)
+	try:
+		existing_lock = None
+		if Combo.has_section(_combo_section_name()) and Combo.has_option(_combo_section_name(), _combo_lock_option_name()):
+			existing_lock = float(Combo.get(_combo_section_name(), _combo_lock_option_name()))
+		if lock_ratio <= 0.2005 and existing_lock is not None and existing_lock > 0.2005 and LearningCompletedThisSession != 1:
+			ac.log("Combo lock preserve existing: " + _combo_section_name() + "-" + _combo_lock_option_name() + "=" + "{:.4f}".format(existing_lock))
+			return
+	except Exception:
+		pass
 	WriteOptions(Combo, ComboPath, _combo_section_name(), _combo_lock_option_name(), "{:.4f}".format(lock_ratio))
 
 
@@ -682,14 +699,18 @@ def _clear_combo_lock():
 def _load_combo_lock():
 	global Combo, ComboPath, AdaptiveMode, LearningComplete, LearningLapStart, LockValue
 	global RollbackGain, RollbackLockValue, LearningSamples, LearningSamplesSlow, LearningSamplesMid, LearningSamplesFast, LearningSafeCaps
+	global StoredLockLoaded, LearningCompletedThisSession
 	Combo.read(ComboPath)
 	if not Combo.has_section(_combo_section_name()):
+		ac.log("Combo lock section missing: " + _combo_section_name())
 		return False
 	if not Combo.has_option(_combo_section_name(), _combo_lock_option_name()):
+		ac.log("Combo lock option missing: " + _combo_section_name() + "-" + _combo_lock_option_name())
 		return False
 	try:
 		lock_ratio = float(Combo.get(_combo_section_name(), _combo_lock_option_name()))
 	except Exception:
+		ac.log("Combo lock invalid: " + _combo_section_name() + "-" + _combo_lock_option_name())
 		return False
 	LockValue = _clamp(_migrate_dd_legacy_ratio(lock_ratio), 0.20, 3.0)
 	RollbackGain = LockValue
@@ -701,6 +722,9 @@ def _load_combo_lock():
 	LearningSamplesMid = [LockValue] * 72
 	LearningSamplesFast = [LockValue] * 40
 	LearningSafeCaps = [LockValue] * 160
+	StoredLockLoaded = 1
+	LearningCompletedThisSession = 0
+	ac.log("Combo lock loaded: " + _combo_section_name() + "-" + _combo_lock_option_name() + "=" + "{:.4f}".format(LockValue))
 	return True
 
 
@@ -859,6 +883,7 @@ def _pull_gain_inputs_from_ui():
 
 def _reset_learning_state(status_message=None, clear_persisted=False):
 	global LearningLapStart, LearningComplete, LearningSamples, LearningSamplesSlow, LearningSamplesMid, LearningSamplesFast, LearningSafeCaps, LockValue
+	global StoredLockLoaded, LearningCompletedThisSession
 	LearningLapStart = -1
 	LearningComplete = 0
 	LearningSamples = []
@@ -866,6 +891,8 @@ def _reset_learning_state(status_message=None, clear_persisted=False):
 	LearningSamplesMid = []
 	LearningSamplesFast = []
 	LearningSafeCaps = []
+	StoredLockLoaded = 0
+	LearningCompletedThisSession = 0
 	LockValue = 1.0
 	if clear_persisted:
 		_clear_combo_lock()
@@ -1001,7 +1028,8 @@ def acMain(acVersion):
 	global MainPageWidgets,OptionsNavWidgets,OptionsDriveWidgets,OptionsAdaptiveWidgets,OptionsProtectionWidgets,OptionsToolsWidgets,OptionsActionWidgets
 	global errorMessage,graph
 	global CarGainTarget,ffbMultiplier,Histogram,MainGain,TargetGain,CarGainCombo,OldCarGain,ComboGain,TargetCarGain
-	global AutoMode,DynamicMode,ManualOverride,DDToggle,MaxTorque
+	global ffbMultiplierSmoothOld
+	global AutoMode,DynamicMode,ManualOverride,DDToggle,MaxTorque,DDMappingVersion
 	global TrackID,TrackConfigID,CarID,CarGain,config,Combo,ComboPath,FFBClip,FFBClipPath
 	global DynamicSpeed,DynamicThreshold,GraphRefresh,DisplayMode,RB,RBToggle
 	global GraphForceHistory,GraphTargetHistory
@@ -1108,7 +1136,6 @@ def acMain(acVersion):
 	ManualOverride=float(ReadOptions(FFBClip,FFBClipPath,"Options","manualoverride","0"))
 	DDToggle=float(ReadOptions(FFBClip,FFBClipPath,"Options","ddtoggle","0"))
 	DDMappingVersion=int(float(ReadOptions(FFBClip,FFBClipPath,"Options","ddmappingversion","0")))
-	SetupHash = _compute_setup_hash()
 	AdaptiveMode = int(_clamp(AdaptiveMode,0,2))
 	LearnLaps = int(_clamp(LearnLaps,1,20))
 	LockPercentile = _clamp(LockPercentile,1,50)
@@ -1187,12 +1214,24 @@ def acMain(acVersion):
 	_commit_dd_mapping_migration()
 	if FeaturePresetManager==1:
 		_load_preset_if_needed()
+	if AdaptiveMode != 0:
+		hasStoredLock = _load_combo_lock()
+		if hasStoredLock and AdaptiveMode == 1:
+			CarGain = LockValue
+			CarGainCombo = LockValue
+	SetupHash = _compute_setup_hash()
 
 	if ManualOverride==1:
 		AutoMode=0
 		errorMessage = "Manual override, clipping is NOT prevented"
 	else:
 		AutoMode=1
+	if AutoMode == 1 and AdaptiveMode == 1 and LearningComplete == 1:
+		_apply_car_gain_target(LockValue)
+		CarGain = LockValue
+		CarGainCombo = LockValue
+		OldCarGain = LockValue
+		ffbMultiplierSmoothOld = LockValue
 
 	ac.log("Setting up the main window")
 	appWindow = ac.newApp("FFBClipX")
@@ -1915,6 +1954,9 @@ def acShutdown(*args):
 	
 	ac.log("shutdown")
 	current_shutdown_gain = round(ac.getCarFFB()/100.0, 2)
+	combo_shutdown_gain = current_shutdown_gain
+	if AdaptiveMode == 1 and LearningComplete == 1:
+		combo_shutdown_gain = _clamp(LockValue, 0.20, 3.0)
 	
 	if os.path.exists(ComboPath):
 		if Combo.has_section(TrackID+"_"+TrackConfigID):
@@ -1922,16 +1964,16 @@ def acShutdown(*args):
 			if Combo.has_option(TrackID+"_"+TrackConfigID,CarID):
 				ac.log("Car found")
 				Combo.remove_option(TrackID+"_"+TrackConfigID,CarID)
-				Combo.set(TrackID+"_"+TrackConfigID,CarID,str(current_shutdown_gain))
+				Combo.set(TrackID+"_"+TrackConfigID,CarID,"{:.4f}".format(combo_shutdown_gain))
 			else:
 				ac.log("Car not found")
-				Combo.set(TrackID+"_"+TrackConfigID,CarID,str(current_shutdown_gain))
+				Combo.set(TrackID+"_"+TrackConfigID,CarID,"{:.4f}".format(combo_shutdown_gain))
 				ac.log("add")
 		else:
 			ac.log("Track not found")
 			Combo.add_section(TrackID+"_"+TrackConfigID)
 			
-			Combo.set(TrackID+"_"+TrackConfigID,CarID,str(current_shutdown_gain))
+			Combo.set(TrackID+"_"+TrackConfigID,CarID,"{:.4f}".format(combo_shutdown_gain))
 	else:
 		ac.log("Not Found")
 	
