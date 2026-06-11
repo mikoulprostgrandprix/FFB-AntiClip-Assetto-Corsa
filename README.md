@@ -1,3 +1,8 @@
+Installation
+Unzip
+Paste in assetto corsa folder
+apps/python
+
 # FFBClipX complete manual
 
 This guide explains the full FFBClipX interface in English:
